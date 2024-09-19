@@ -1,0 +1,418 @@
+import os
+from tkinter import filedialog, ttk, messagebox
+from PIL import Image, ImageTk, ImageDraw, ImageFont
+import tkinter as tk
+import customtkinter as ctk
+
+current_result = None
+file_content = None
+previous_window = None
+affine_a = 0
+affine_b = 0
+import math
+
+def is_coprime_with_26(a):
+    return math.gcd(a, 26) == 1
+
+
+substitution_table = {
+    'A': 'Q', 'B': 'W', 'C': 'E', 'D': 'R', 'E': 'T', 'F': 'Y', 'G': 'U',
+    'H': 'I', 'I': 'O', 'J': 'P', 'K': 'A', 'L': 'S', 'M': 'D', 'N': 'F',
+    'O': 'G', 'P': 'H', 'Q': 'J', 'R': 'K', 'S': 'L', 'T': 'Z', 'U': 'X',
+    'V': 'C', 'W': 'V', 'X': 'B', 'Y': 'N', 'Z': 'M',
+    'a': 'q', 'b': 'w', 'c': 'e', 'd': 'r', 'e': 't', 'f': 'y', 'g': 'u',
+    'h': 'i', 'i': 'o', 'j': 'p', 'k': 'a', 'l': 's', 'm': 'd', 'n': 'f',
+    'o': 'g', 'p': 'h', 'q': 'j', 'r': 'k', 's': 'l', 't': 'z', 'u': 'x',
+    'v': 'c', 'w': 'v', 'x': 'b', 'y': 'n', 'z': 'm'
+}
+
+def convert(a, m):
+    chu_ma_hoa = []
+    for word in m:
+        ls = []
+        for char in word:
+            if char.isalpha():
+                if char.islower():
+                    base = ord('a')
+                else:
+                    base = ord('A')
+                E = ord(char) - base
+                E1 = (a + E) % 26
+                ls.append(chr(E1 + base))
+            else:
+                ls.append(char)
+        chu_ma_hoa.append(''.join(ls))
+    return ' '.join(chu_ma_hoa)
+
+
+def solve(a, m):
+    chu_giai_ma = []
+    for word in m:
+        ls = []
+        for char in word:
+            if char.isalpha():
+                if char.islower():
+                    base = ord('a')
+                else:
+                    base = ord('A')
+                E = ord(char) - base
+                E1 = (E - a) % 26
+                ls.append(chr(E1 + base))
+            else:
+                ls.append(char)
+        chu_giai_ma.append(''.join(ls))
+    return ' '.join(chu_giai_ma)
+
+def affine_encrypt(a, b, m):
+    encrypted_message = []
+    for word in m:
+        ls = []
+        for char in word:
+            if char.isalpha():
+                base = ord('a') if char.islower() else ord('A')
+                E = ord(char) - base
+                E1 = (a * E + b) % 26
+                ls.append(chr(E1 + base))
+            else:
+                ls.append(char)
+        encrypted_message.append(''.join(ls))
+    return ' '.join(encrypted_message)
+
+def affine_decrypt(a, b, m):
+    decrypted_message = []
+    def mod_inverse(x, m):
+        for i in range(1, m):
+            if (x * i) % m == 1:
+                return i
+        return None
+    
+    inv_a = mod_inverse(a, 26)
+    if inv_a is None:
+        return "Invalid key for decryption"
+    
+    for word in m:
+        ls = []
+        for char in word:
+            if char.isalpha():
+                base = ord('a') if char.islower() else ord('A')
+                E = ord(char) - base
+                E1 = (inv_a * (E - b)) % 26
+                ls.append(chr(E1 + base))
+            else:
+                ls.append(char)
+        decrypted_message.append(''.join(ls))
+    return ' '.join(decrypted_message)
+
+
+def substitute_encrypt(text):
+    encrypted_text = []
+    for char in text:
+        if char in substitution_table:
+            encrypted_text.append(substitution_table[char])
+        else:
+            encrypted_text.append(char)
+    return ''.join(encrypted_text)
+
+
+def substitute_decrypt(text):
+    reversed_table = {v: k for k, v in substitution_table.items()}
+    decrypted_text = []
+    for char in text:
+        if char in reversed_table:
+            decrypted_text.append(reversed_table[char])
+        else:
+            decrypted_text.append(char)
+    return ''.join(decrypted_text)
+
+def open_file():
+    global file_content
+    file_path = filedialog.askopenfilename(title="Chọn tệp tin", filetypes=(("All Files", "*.*"),))
+    if file_path:
+        with open(file_path, 'r', encoding='utf-8') as file:
+            try:
+                
+                file_content = file.read().split()
+                open_new_window()
+                
+            except Exception as e:
+                messagebox.showerror("Lỗi", f"Lỗi khi đọc tệp: {str(e)}")
+
+def open_new_window():
+    global previous_window
+    previous_window = app 
+    new_window = ctk.CTkToplevel(app,fg_color="#8ad39a")
+    new_window.title("Nội dung và tùy chọn")
+    new_window.geometry("800x600")
+    
+    app.withdraw()
+
+    text_widget = ctk.CTkTextbox(new_window, width=600, height=200, bg_color="#CAE7C3", fg_color="#fff7ed", text_color="#26936d", font=("Arial", 20))
+    text_widget.pack(pady=20)
+    text_widget.insert("0.0", ' '.join(file_content))
+    text_widget.configure(state="disabled")  
+
+    key_frame = ctk.CTkFrame(new_window, bg_color="#CAE7C3", fg_color="#CAE7C3", corner_radius=0)  # Sử dụng fg_color thay cho bg
+    key_frame.pack(pady=20)
+
+    # First label and entry for key input
+    # First label and entry for key input
+    key_label = ctk.CTkLabel(key_frame, text="Nhập khóa (số nguyên):", bg_color="#CAE7C3", fg_color="#CAE7C3", text_color="#00697f", anchor="e")
+    key_label.grid(row=0, column=0, padx=10, pady=5, sticky="e")  # Ensure the label aligns to the right
+
+    key_entry = ctk.CTkEntry(key_frame, width=150)  # Adjust the width as needed
+    key_entry.grid(row=0, column=1, padx=0, pady=5, sticky="w")
+        # Second label for the note (spanning across columns for centered text)
+    note_label = ctk.CTkLabel(key_frame, text="Note: Nếu giải mã file vừa mã hóa hãy nhập key đã được lưu sẵn vào file ( Key: X.)", 
+                            bg_color="#CAE7C3", fg_color="#CAE7C3", text_color="#00697f")
+    note_label.grid(row=1, column=0, columnspan=2, padx=10, pady=10, sticky="w")  # Spanning 2 columns for alignment
+
+
+    def get_key():
+        try:
+            return int(key_entry.get())  # Ensure a valid integer key is returned
+        except ValueError:
+            messagebox.showerror("Lỗi", "Vui lòng nhập một số nguyên hợp lệ!")
+            return None
+    button_frame = ctk.CTkFrame(new_window, fg_color="#CAE7C3", corner_radius=0)
+    button_frame.pack(pady=20)
+
+    encrypt_button = ctk.CTkButton(button_frame, text="Mã hóa Caesar", command=lambda: encrypt(new_window, get_key()),
+                                   bg_color="#E0FFFA", fg_color="#FFFFFF", text_color="#00697f", hover_color="#FFF7ED")
+    encrypt_button.grid(row=0, column=0, padx=10, pady=10)
+
+    decrypt_button = ctk.CTkButton(button_frame, text="Giải mã Caesar", command=lambda: decrypt(new_window, get_key()), hover_color="#FFF7ED",
+                                   bg_color="#E0FFFA", fg_color="#FFFFFF", text_color="#00697f")
+    decrypt_button.grid(row=0, column=1, padx=10, pady=10)
+
+
+    sub_encrypt_button = ctk.CTkButton(button_frame, text="Mã hóa thay thế", command=lambda: substitute_encrypt_action(new_window),
+                                       bg_color="#E0FFFA", fg_color="#FFFFFF",text_color="#00697f",
+     hover_color="#FFF7ED")
+    sub_encrypt_button.grid(row=1, column=0, padx=10, pady=10)
+
+    sub_decrypt_button = ctk.CTkButton(button_frame, text="Giải mã thay thế", command=lambda: substitute_decrypt_action(new_window),
+                                       bg_color="#E0FFFA", fg_color="#FFFFFF",text_color="#00697f", hover_color="#FFF7ED")
+    sub_decrypt_button.grid(row=1, column=1, padx=10, pady=10)
+
+    affine_encrypt_button = ctk.CTkButton(button_frame, text="Mã hóa Affine", command=lambda: open_affine_window('encrypt', new_window),
+                                          bg_color="#E0FFFA", fg_color="#FFFFFF",text_color="#00697f", hover_color="#FFF7ED")
+    affine_encrypt_button.grid(row=2, column=0, padx=10, pady=10)
+
+    affine_decrypt_button = ctk.CTkButton(button_frame, text="Giải mã Affine", command=lambda: open_affine_window('decrypt', new_window),
+                                          bg_color="#E0FFFA", fg_color="#FFFFFF",text_color="#00697f", hover_color="#FFF7ED")
+    affine_decrypt_button.grid(row=2, column=1, padx=10, pady=10)
+
+def go_back(current_window):
+    global previous_window
+    current_window.destroy() 
+    if previous_window:
+        previous_window.deiconify()  
+        previous_window = None  
+def encrypt(current_window, key_value):
+    global current_result, key  
+    key = key_value  
+    if file_content and key_value is not None:
+        ma_hoa = convert(key_value, file_content)
+        current_result = ma_hoa
+        current_window.destroy() 
+        open_results_window(ma_hoa)
+
+
+def decrypt(current_window, key_value):
+    global current_result, key 
+    key = key_value
+    if file_content and key_value is not None:
+        giai_ma = solve(key_value, file_content)
+        current_result = giai_ma  
+        current_window.destroy()  
+        open_results_window(giai_ma)
+def substitute_encrypt_action(current_window):
+    global current_result  
+    if file_content:
+        encrypted_text = substitute_encrypt(' '.join(file_content))
+        current_result = encrypted_text  
+        current_window.destroy()  
+        open_results_window(encrypted_text)
+
+def substitute_decrypt_action(current_window):
+    global current_result  
+    if file_content:
+        decrypted_text = substitute_decrypt(' '.join(file_content))
+        current_result = decrypted_text  
+        current_window.destroy()  
+        open_results_window(decrypted_text)
+
+def open_affine_window(action, parent_window):
+    affine_window = ctk.CTkToplevel(parent_window,fg_color="#fff7ed")
+    affine_window.title("Chọn khóa Affine (a và b)")
+    affine_window.geometry("400x300")
+    affine_window.configure(bg_color="#FED28B",fg_color="#fff7ed") 
+
+    
+    frame = ctk.CTkFrame(affine_window,fg_color="#fff7ed",corner_radius=0)
+    frame.pack(expand=True) 
+
+    a_label = ctk.CTkLabel(frame, text="Khóa a:", fg_color="#fff7ed",text_color="#f29b70",font=("Arial",20))
+    a_label.grid(row=0, column=0, padx=10, pady=10, sticky="e")  
+
+    a_entry = ctk.CTkEntry(frame)
+    a_entry.grid(row=0, column=1, padx=10, pady=10, sticky="w")  
+
+    b_label = ctk.CTkLabel(frame, text="Khóa b:", fg_color="#fff7ed",text_color="#f29b70",font=("Arial",20))
+    b_label.grid(row=1, column=0, padx=10, pady=10, sticky="e") 
+
+    b_entry = ctk.CTkEntry(frame)
+    b_entry.grid(row=1, column=1, padx=10, pady=10, sticky="w") 
+
+  
+    submit_button = ctk.CTkButton(frame, text="Xác nhận", command=lambda: process_affine_cipher(a_entry, b_entry), hover_color="#4682B4")
+    submit_button.grid(row=2, column=0, columnspan=2, padx=10, pady=20, sticky="ew") 
+
+
+    frame.grid_columnconfigure(0, weight=1)
+    frame.grid_columnconfigure(1, weight=1)
+
+    def process_affine_cipher(a_entry, b_entry):
+        global current_result
+        try:
+            affine_a = int(a_entry.get())
+            affine_b = int(b_entry.get())
+            if not is_coprime_with_26(affine_a):
+                messagebox.showerror("Lỗi", "Giá trị a phải nguyên tố cùng nhau với 26! Vui lòng nhập lại.")
+                return
+
+            if file_content:
+                if action == 'encrypt':
+                    result = affine_encrypt(affine_a, affine_b, file_content)
+                else:
+                    result = affine_decrypt(affine_a, affine_b, file_content)
+                current_result = result
+                affine_window.destroy()
+                parent_window.destroy()
+                open_results_window(result)
+        except ValueError:
+            messagebox.showerror("Lỗi", "Vui lòng nhập các giá trị số nguyên hợp lệ!")
+
+
+
+def affine_encrypt_action(current_window):
+    global current_result
+    if file_content:
+        ma_hoa = affine_encrypt(affine_a, affine_b, file_content)
+        current_result = ma_hoa
+        current_window.destroy()
+        open_results_window(ma_hoa)
+
+def affine_decrypt_action(current_window):
+    global current_result
+    if file_content:
+        giai_ma = affine_decrypt(affine_a, affine_b, file_content)
+        current_result = giai_ma
+        current_window.destroy()
+        open_results_window(giai_ma)
+
+def open_results_window(result):
+    global previous_window
+    results_window = ctk.CTkToplevel(app, fg_color="#8ad39a")
+    results_window.title("Kết quả")
+    results_window.geometry("800x600")
+
+
+    previous_window.withdraw()
+
+  
+    result_label = ctk.CTkLabel(results_window, 
+                            text="Kết quả mã hóa/giải mã:", 
+                            bg_color="#fdf4cb", 
+                            text_color="#f29b70",  # Màu chữ
+                            font=("Times New Roman", 20))
+    result_label.pack(pady=10)
+
+   
+    text_widget = tk.Text(results_window, width=80, height=20, bg="#fdf4cb", fg="black")
+    text_widget.pack(pady=20)
+    text_widget.insert(tk.END, result)
+    text_widget.config(state=tk.DISABLED)
+
+
+   
+    save_button = ctk.CTkButton(results_window, 
+                                text="Lưu kết quả", 
+                                command=save_file, 
+                                hover_color="#4682B4",
+                                fg_color="#2C3E50",  # Màu nền của nút
+                                text_color="white")  # Màu chữ
+    save_button.pack(pady=10)
+
+
+    back_button = ctk.CTkButton(results_window, 
+                                text="Trở lại", 
+                                command=lambda: go_back(results_window), 
+                                hover_color="#4682B4",
+                                fg_color="#2C3E50",  # Màu nền của nút
+                                text_color="white")  # Màu chữ
+    back_button.pack(pady=10)
+
+    previous_window = app if not previous_window else previous_window  
+
+def go_back(current_window):
+    global previous_window
+    current_window.destroy() 
+    if previous_window:
+        previous_window.deiconify()  
+        previous_window = None 
+import os
+def save_file():
+    global current_result, key  # Use the globally stored key and result
+    if current_result:
+        file_path = filedialog.asksaveasfilename(
+            title="Đặt tên tệp tin", 
+            defaultextension=".txt", 
+            filetypes=[("Text file", "*.txt")],
+            initialfile="result"
+        )
+        if file_path:
+            try:
+                # Write the key and encrypted/decrypted content into the file
+                with open(file_path, 'w', encoding='utf-8') as f:
+                    f.write(f"Key: {key}\n")  # Save key at the beginning
+                    f.write(current_result + "\n")  # Save the result (encrypted or decrypted text)
+                messagebox.showinfo("Lưu thành công", f"Kết quả và khóa mã hóa đã được lưu vào:\n{file_path}")
+            except Exception as e:
+                messagebox.showerror("Lỗi", f"Đã xảy ra lỗi khi lưu tệp: {str(e)}")
+    else:
+        messagebox.showwarning("Không có kết quả", "Không có kết quả nào để lưu!")
+def open_file_for_decryption():
+    global file_content, key
+    file_path = filedialog.askopenfilename(title="Chọn tệp tin", filetypes=(("Text Files", "*.txt"),))
+    if file_path:
+        try:
+            with open(file_path, 'r', encoding='utf-8') as file:
+                key_line = file.readline().strip()
+                if key_line.startswith("Key:"):
+                    key = int(key_line.split(":")[1].strip())  
+                    file_content = file.read().split()  
+                    open_new_window()
+                else:
+                    messagebox.showerror("Lỗi", "Không tìm thấy khóa mã hóa trong tệp!")
+        except Exception as e:
+            messagebox.showerror("Lỗi", f"Lỗi khi đọc tệp: {str(e)}")
+app = ctk.CTk()
+app.title("Mã hóa và Giải mã")
+app.geometry("800x600")
+
+canvas = ctk.CTkCanvas(app, width=800, height=600, bg="#E0FFFA")
+canvas.pack(fill="both", expand=True)
+label = ctk.CTkLabel(app, text="Phần Mềm Mã Hóa", font=("Times New Roman", 20),
+                     bg_color="#E0FFFA", text_color="#00697F", anchor="center")
+label.place(relx=0.5, rely=0.3, anchor="center")
+label1 = ctk.CTkLabel(app, text="Created by Pham Quang", font=("Times New Roman", 20),bg_color="#E0FFFA", text_color="#00697F", anchor="center")
+label1.place(relx=0.5, rely=0.8, anchor="center")
+
+label1 = ctk.CTkLabel(app, text="This demo app was created to test\n some types of ciphers", font=("Times New Roman", 20),bg_color="#E0FFFA", text_color="#00697F", anchor="center")
+label1.place(relx=0.5, rely=0.9, anchor="center")
+rounded_button = ctk.CTkButton(app, text="Select Files", command=open_file, hover_color="#4682B4", text_color="white", font=("Times New Roman", 18))
+rounded_button.place(relx=0.5, rely=0.5, anchor="center")
+
+app.mainloop()
+
